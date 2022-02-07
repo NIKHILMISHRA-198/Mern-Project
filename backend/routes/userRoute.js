@@ -6,13 +6,13 @@ const {
     forgotPassword,
     resetPassword,
     getUserDetails,
-    // updatePassword,
-    // updateProfile,
     getAllUser,
     getSingleUser,
     updateUserRole,
     deleteUser,
-} = require("../controllers/userController"); s
+    UpdateUserPassword,
+    UpdateUserProfile,
+} = require("../controllers/userController");
 const { isUserAuthenticated, authorizeRoles } = require("../middleware/auth");
 const router = express.Router();
 

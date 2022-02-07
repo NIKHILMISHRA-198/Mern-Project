@@ -85,7 +85,7 @@ exports.forgotPassword = catchAsyncErrors(async (req, res, next) => {
     try {
         await sendEmail({
             email: user.email,
-            subject: `Conexio Password Recovery`,
+            subject: `Ecommerce Password Recovery`,
             message,
         });
 
@@ -197,6 +197,7 @@ exports.UpdateUserProfile = catchAsyncErrors(async (req, res, next) => {
 
 
 // Get all users (admin)
+
 exports.getAllUser = catchAsyncErrors(async (req, res, next) => {
     const users = await User.find();
 
