@@ -42,3 +42,6 @@ In User Controller:
 121
 
 as given in stripe.com/docs/testing
+
+<!--  // NO one can come and inspect anything on the website with right mouse click
+  window.addEventListener("contextmenu", (e) => e.preventDefault()); -->
