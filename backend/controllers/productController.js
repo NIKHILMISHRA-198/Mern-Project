@@ -1,26 +1,44 @@
 const Product = require("../models/productModel");
-const ErrorHandler = require("../utils/errorhandler");
+const ErrorHandler = require("../utils/ErrorHandler");
 const catchAsyncErrors = require("../middleware/catchAsyncErrors");
 const ApiFeatures = require("../utils/apifeatures");
+const cloudinary = require("cloudinary");
 
-
-//CREATE A PRODUCT -- ADMIN
-
+// Create Product -- Admin
 exports.createProduct = catchAsyncErrors(async (req, res, next) => {
-    req.body.user = req.user.id; // To know who created the product
+    let images = [];
+
+    if (typeof req.body.images === "string") {
+        images.push(req.body.images);
+    } else {
+        images = req.body.images;
+    }
+
+    const imagesLinks = [];
+
+    for (let i = 0; i < images.length; i++) {
+        const result = await cloudinary.v2.uploader.upload(images[i], {
+            folder: "products",
+        });
+
+        imagesLinks.push({
+            public_id: result.public_id,
+            url: result.secure_url,
+        });
+    }
+
+    req.body.images = imagesLinks;
+    req.body.user = req.user.id;
 
     const product = await Product.create(req.body);
 
     res.status(201).json({
         success: true,
-        product
+        product,
     });
 });
 
-
-
-//Get all Products callback function
-//It will be called in Product route and then in app.js 
+// Get All Product
 exports.getAllProducts = catchAsyncErrors(async (req, res, next) => {
     const resultPerPage = 8;
     const productsCount = await Product.countDocuments();
@@ -46,63 +64,103 @@ exports.getAllProducts = catchAsyncErrors(async (req, res, next) => {
     });
 });
 
+// Get All Product (Admin)
+exports.getAdminProducts = catchAsyncErrors(async (req, res, next) => {
+    const products = await Product.find();
 
-//Update Product
+    res.status(200).json({
+        success: true,
+        products,
+    });
+});
 
-exports.updateProduct = catchAsyncErrors(async (req, res) => {
-    let product = Product.findById(req.params.id);
+// Get Product Details
+exports.getProductDetails = catchAsyncErrors(async (req, res, next) => {
+    const product = await Product.findById(req.params.id);
+
     if (!product) {
-        return next(new ErrorHandler("Product not found", 404))
+        return next(new ErrorHandler("Product not found", 404));
+    }
+
+    res.status(200).json({
+        success: true,
+        product,
+    });
+});
+
+// Update Product -- Admin
+
+exports.updateProduct = catchAsyncErrors(async (req, res, next) => {
+    let product = await Product.findById(req.params.id);
+
+    if (!product) {
+        return next(new ErrorHandler("Product not found", 404));
+    }
+
+    // Images Start Here
+    let images = [];
+
+    if (typeof req.body.images === "string") {
+        images.push(req.body.images);
+    } else {
+        images = req.body.images;
+    }
+
+    if (images !== undefined) {
+        // Deleting Images From Cloudinary
+        for (let i = 0; i < product.images.length; i++) {
+            await cloudinary.v2.uploader.destroy(product.images[i].public_id);
+        }
+
+        const imagesLinks = [];
+
+        for (let i = 0; i < images.length; i++) {
+            const result = await cloudinary.v2.uploader.upload(images[i], {
+                folder: "products",
+            });
+
+            imagesLinks.push({
+                public_id: result.public_id,
+                url: result.secure_url,
+            });
+        }
+
+        req.body.images = imagesLinks;
     }
 
     product = await Product.findByIdAndUpdate(req.params.id, req.body, {
         new: true,
         runValidators: true,
-        useFindAndModify: false
-    })
+        useFindAndModify: false,
+    });
 
     res.status(200).json({
         success: true,
-        product
-    })
+        product,
+    });
+});
 
-})
-
-//Delete Product
+// Delete Product
 
 exports.deleteProduct = catchAsyncErrors(async (req, res, next) => {
-
     const product = await Product.findById(req.params.id);
+
     if (!product) {
-        return next(new ErrorHandler("Product not found", 404))
+        return next(new ErrorHandler("Product not found", 404));
+    }
+
+    // Deleting Images From Cloudinary
+    for (let i = 0; i < product.images.length; i++) {
+        await cloudinary.v2.uploader.destroy(product.images[i].public_id);
     }
 
     await product.remove();
 
     res.status(200).json({
         success: true,
-        message: "Product deleted successfully"
-
-    })
-}
-)
-
-//Get Single Product Details
-
-exports.getProductDetails = catchAsyncErrors(async (req, res, next) => {
-    const product = await Product.findById(req.params.id);
-
-    if (!product) {
-        return next(new ErrorHandler("Product not found", 404))
-    }
-
-    res.status(200).json({
-        success: true,
-        product
-
-    })
-
-})
+        message: "Product Delete Successfully",
+    });
+});
 
 // Create New Review or Update the review
 exports.createProductReview = catchAsyncErrors(async (req, res, next) => {
